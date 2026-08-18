@@ -35,6 +35,64 @@ async function main() {
     { key: 'expense.create', name: 'Create Expenses', module: 'expense' },
     { key: 'expense.update', name: 'Update Expenses', module: 'expense' },
     { key: 'report.read', name: 'Read Reports', module: 'report' },
+    
+    // Phase 05 Permissions
+    { key: 'destination.read', name: 'Read Destinations', module: 'destination' },
+    { key: 'destination.create', name: 'Create Destinations', module: 'destination' },
+    { key: 'destination.update', name: 'Update Destinations', module: 'destination' },
+    { key: 'destination.delete', name: 'Delete Destinations', module: 'destination' },
+    
+    { key: 'tourCategory.read', name: 'Read Categories', module: 'tourCategory' },
+    { key: 'tourCategory.create', name: 'Create Categories', module: 'tourCategory' },
+    { key: 'tourCategory.update', name: 'Update Categories', module: 'tourCategory' },
+    { key: 'tourCategory.delete', name: 'Delete Categories', module: 'tourCategory' },
+    
+    { key: 'pickupPoint.read', name: 'Read Pickup Points', module: 'pickupPoint' },
+    { key: 'pickupPoint.create', name: 'Create Pickup Points', module: 'pickupPoint' },
+    { key: 'pickupPoint.update', name: 'Update Pickup Points', module: 'pickupPoint' },
+    { key: 'pickupPoint.delete', name: 'Delete Pickup Points', module: 'pickupPoint' },
+    
+    // Core Tour Permissions
+    { key: 'tour.read', name: 'Read Tours', module: 'tour' },
+    { key: 'tour.create', name: 'Create Tours', module: 'tour' },
+    { key: 'tour.update', name: 'Update Tours', module: 'tour' },
+    { key: 'tour.delete', name: 'Delete Tours', module: 'tour' },
+    { key: 'tour.publish', name: 'Publish Tours', module: 'tour' },
+    { key: 'tour.archive', name: 'Archive Tours', module: 'tour' },
+    
+    // Nested Tour Permissions
+    { key: 'tour.schedule.read', name: 'Read Schedules', module: 'tour' },
+    { key: 'tour.schedule.create', name: 'Create Schedules', module: 'tour' },
+    { key: 'tour.schedule.update', name: 'Update Schedules', module: 'tour' },
+    { key: 'tour.schedule.delete', name: 'Delete Schedules', module: 'tour' },
+    { key: 'tour.schedule.bulkCreate', name: 'Bulk Create Schedules', module: 'tour' },
+    { key: 'tour.schedule.duplicate', name: 'Duplicate Schedules', module: 'tour' },
+    
+    { key: 'tour.itinerary.read', name: 'Read Itinerary', module: 'tour' },
+    { key: 'tour.itinerary.create', name: 'Create Itinerary', module: 'tour' },
+    { key: 'tour.itinerary.update', name: 'Update Itinerary', module: 'tour' },
+    { key: 'tour.itinerary.delete', name: 'Delete Itinerary', module: 'tour' },
+    { key: 'tour.itinerary.reorder', name: 'Reorder Itinerary', module: 'tour' },
+    
+    { key: 'tour.addon.read', name: 'Read Addons', module: 'tour' },
+    { key: 'tour.addon.create', name: 'Create Addons', module: 'tour' },
+    { key: 'tour.addon.update', name: 'Update Addons', module: 'tour' },
+    { key: 'tour.addon.delete', name: 'Delete Addons', module: 'tour' },
+    
+    { key: 'tour.media.read', name: 'Read Media', module: 'tour' },
+    { key: 'tour.media.create', name: 'Create Media', module: 'tour' },
+    { key: 'tour.media.update', name: 'Update Media', module: 'tour' },
+    { key: 'tour.media.delete', name: 'Delete Media', module: 'tour' },
+    { key: 'tour.media.reorder', name: 'Reorder Media', module: 'tour' },
+    
+    { key: 'tour.seo.read', name: 'Read SEO', module: 'tour' },
+    { key: 'tour.seo.update', name: 'Update SEO', module: 'tour' },
+    
+    { key: 'tour.bookingRules.read', name: 'Read Booking Rules', module: 'tour' },
+    { key: 'tour.bookingRules.update', name: 'Update Booking Rules', module: 'tour' },
+    
+    { key: 'tour.cancellationPolicy.read', name: 'Read Cancellation Policy', module: 'tour' },
+    { key: 'tour.cancellationPolicy.update', name: 'Update Cancellation Policy', module: 'tour' },
   ];
 
   console.log('Seeding permissions...');
@@ -174,9 +232,133 @@ async function main() {
         roleId: ownerRole.id,
       },
     });
-  } else {
-    console.log('SEED_ADMIN_EMAIL or SEED_ADMIN_PASSWORD not set. Skipping user seed.');
   }
+  
+  // Need an adminUser reference for Phase 05 data
+  const defaultUser = await prisma.user.findFirst({
+    where: { organizationId: devOrg.id },
+  });
+  
+  // 6. Phase 05 Demo Data
+  console.log('Seeding Phase 05 demo data...');
+
+  // Destinations
+  const dest1 = await prisma.destination.upsert({
+    where: { organizationId_slug: { organizationId: devOrg.id, slug: 'sundarbans' } },
+    update: {},
+    create: {
+      organizationId: devOrg.id,
+      name: 'Sundarbans',
+      slug: 'sundarbans',
+      status: 'ACTIVE',
+    }
+  });
+
+  const dest2 = await prisma.destination.upsert({
+    where: { organizationId_slug: { organizationId: devOrg.id, slug: 'tanguar-haor' } },
+    update: {},
+    create: {
+      organizationId: devOrg.id,
+      name: 'Tanguar Haor',
+      slug: 'tanguar-haor',
+      status: 'ACTIVE',
+    }
+  });
+
+  // Category
+  const cat1 = await prisma.tourCategory.upsert({
+    where: { organizationId_slug: { organizationId: devOrg.id, slug: 'adventure' } },
+    update: {},
+    create: {
+      organizationId: devOrg.id,
+      name: 'Adventure',
+      slug: 'adventure',
+      status: 'ACTIVE',
+    }
+  });
+
+  // Pickup Point
+  const pickup = await prisma.pickupPoint.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000001' }, // Dummy ID to prevent duplicate if name changes
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000001',
+      organizationId: devOrg.id,
+      name: 'নতুল্লাবাদ',
+      status: 'ACTIVE',
+    }
+  });
+
+  // Tour 1: Sundarbans
+  const tour1 = await prisma.tourPackage.upsert({
+    where: { organizationId_slug: { organizationId: devOrg.id, slug: 'sundarbans-tour' } },
+    update: {},
+    create: {
+      organizationId: devOrg.id,
+      title: 'Sundarbans Tour',
+      slug: 'sundarbans-tour',
+      destinationId: dest1.id,
+      categoryId: cat1.id,
+      durationDays: 2,
+      durationNights: 1,
+      basePrice: 999,
+      status: 'PUBLISHED',
+      publishedAt: new Date(),
+      createdBy: defaultUser ? defaultUser.id : '00000000-0000-0000-0000-000000000000',
+      updatedBy: defaultUser ? defaultUser.id : '00000000-0000-0000-0000-000000000000',
+    }
+  });
+
+  // Schedule 1: Sundarbans
+  await prisma.tourSchedule.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000002' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000002',
+      organizationId: devOrg.id,
+      tourPackageId: tour1.id,
+      startDate: new Date('2026-09-03T00:00:00Z'),
+      endDate: new Date('2026-09-04T00:00:00Z'),
+      capacity: 50,
+      status: 'OPEN',
+    }
+  });
+
+  // Tour 2: Tanguar Haor
+  const tour2 = await prisma.tourPackage.upsert({
+    where: { organizationId_slug: { organizationId: devOrg.id, slug: 'tanguar-haor-tour' } },
+    update: {},
+    create: {
+      organizationId: devOrg.id,
+      title: 'Tanguar Haor',
+      slug: 'tanguar-haor-tour',
+      destinationId: dest2.id,
+      categoryId: cat1.id,
+      durationDays: 2,
+      durationNights: 1,
+      basePrice: 1599,
+      status: 'PUBLISHED',
+      publishedAt: new Date(),
+      createdBy: defaultUser ? defaultUser.id : '00000000-0000-0000-0000-000000000000',
+      updatedBy: defaultUser ? defaultUser.id : '00000000-0000-0000-0000-000000000000',
+    }
+  });
+
+  // Schedule 2: Tanguar Haor
+  await prisma.tourSchedule.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000003' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000003',
+      organizationId: devOrg.id,
+      tourPackageId: tour2.id,
+      startDate: new Date('2026-08-20T00:00:00Z'),
+      endDate: new Date('2026-08-21T00:00:00Z'),
+      departureLocation: pickup.name,
+      capacity: 40,
+      status: 'OPEN',
+    }
+  });
 
   console.log('Database seed completed successfully.');
 }

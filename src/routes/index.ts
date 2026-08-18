@@ -53,6 +53,11 @@ import { staffRoutes } from '../modules/staff/staff.routes';
 import { roleRoutes } from '../modules/roles/role.routes';
 import { permissionRoutes } from '../modules/permissions/permission.routes';
 import { meRoutes } from '../modules/me/me.routes';
+import { destinationRoutes } from '../modules/destinations/destination.routes';
+import { tourCategoryRoutes } from '../modules/tour-categories/category.routes';
+import { pickupPointRoutes } from '../modules/pickup-points/pickup-point.routes';
+import { tourRoutes } from '../modules/tours/tour.routes';
+import { publicRoutes } from '../modules/public/tour/public-tour.routes';
 
 // ... existing health routes ...
 
@@ -62,5 +67,12 @@ router.use('/staff', staffRoutes);
 router.use('/roles', roleRoutes);
 router.use('/permissions', permissionRoutes);
 router.use('/me', meRoutes);
+
+// Phase 05 routes
+router.use('/destinations', destinationRoutes);
+router.use('/tour-categories', tourCategoryRoutes);
+router.use('/pickup-points', pickupPointRoutes);
+router.use('/tours', tourRoutes);
+router.use('/public', publicRoutes);
 
 export default router;
