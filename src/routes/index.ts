@@ -48,9 +48,19 @@ router.get(
 );
 
 import { authRoutes } from '../modules/auth/auth.routes';
+import { organizationRoutes } from '../modules/organizations/organization.routes';
+import { staffRoutes } from '../modules/staff/staff.routes';
+import { roleRoutes } from '../modules/roles/role.routes';
+import { permissionRoutes } from '../modules/permissions/permission.routes';
+import { meRoutes } from '../modules/me/me.routes';
 
 // ... existing health routes ...
 
 router.use('/auth', authRoutes);
+router.use('/organization', organizationRoutes);
+router.use('/staff', staffRoutes);
+router.use('/roles', roleRoutes);
+router.use('/permissions', permissionRoutes);
+router.use('/me', meRoutes);
 
 export default router;

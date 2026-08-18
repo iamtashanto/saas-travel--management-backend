@@ -323,16 +323,18 @@ model OrganizationInvitation {
   id             String    @id @default(uuid()) @db.Uuid
   organizationId String    @db.Uuid
   email          String
-  roleId         String    @db.Uuid
+  roleIds        String[]  @db.Uuid
   tokenHash      String    @unique
   expiresAt      DateTime
   acceptedAt     DateTime?
+  cancelledAt    DateTime?
   invitedBy      String    @db.Uuid
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  role         Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+  role      Role?    @relation(fields: [roleId], references: [id])
+  roleId    String?  @db.Uuid
 
   @@index([organizationId])
   @@index([email])
