@@ -1,5 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// ==========================================
+// 1. GENERATOR & DATASOURCE
+// ==========================================
 
 generator client {
   provider = "prisma-client-js"
@@ -10,10 +11,248 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Minimal model for Phase 01 to allow Prisma to generate a client
-model TenantPlaceholder {
-  id        String   @id @default(uuid())
-  name      String
+// ==========================================
+// 2. ENUMS
+// ==========================================
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  CANCELLED
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum PlatformAdminStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+// ==========================================
+// 3. PLATFORM MODELS
+// ==========================================
+
+model PlatformAdmin {
+  id           String              @id @default(uuid()) @db.Uuid
+  name         String
+  email        String              @unique
+  passwordHash String
+  status       PlatformAdminStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@map("platform_admins")
+}
+
+// ==========================================
+// 4. ORGANIZATION MODELS
+// ==========================================
+
+model Organization {
+  id              String             @id @default(uuid()) @db.Uuid
+  name            String
+  slug            String             @unique
+  legalName       String?
+  email           String?
+  phone           String?
+  website         String?
+  logoUrl         String?
+  defaultCurrency String             @default("USD") @db.VarChar(3)
+  timezone        String             @default("UTC")
+  countryCode     String             @default("US") @db.VarChar(2)
+  status          OrganizationStatus @default(ACTIVE)
+
+  settings OrganizationSettings?
+
+  sequences Sequence[]
+  users     User[]
+  roles     Role[]
+  auditLogs AuditLog[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("organizations")
+}
+
+model OrganizationSettings {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @unique @db.Uuid
+
+  dateFormat                 String  @default("YYYY-MM-DD")
+  timeFormat                 String  @default("24h")
+  weekStartsOn               Int     @default(1) // 0 = Sunday, 1 = Monday
+  language                   String  @default("en")
+  bookingPrefix              String  @default("BKG")
+  invoicePrefix              String  @default("INV")
+  quotationPrefix            String  @default("QUO")
+  customerPrefix             String  @default("CUS")
+  defaultBookingStatus       String  @default("PENDING")
+  allowOnlineBooking         Boolean @default(false)
+  showPublicSeatAvailability Boolean @default(false)
+  lowSeatThreshold           Int     @default(5)
+  defaultCancellationPolicy  String? @db.Text
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("organization_settings")
+}
+
+model Sequence {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+
+  key          String // e.g., 'BOOKING', 'INVOICE'
+  prefix       String
+  currentValue Int    @default(0)
+  padding      Int    @default(5)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+  @@map("sequences")
+}
+
+// ==========================================
+// 5. USER & RBAC MODELS
+// ==========================================
+
+model User {
+  id             String     @id @default(uuid()) @db.Uuid
+  organizationId String     @db.Uuid
+  name           String
+  email          String
+  phone          String?
+  passwordHash   String
+  avatarUrl      String?
+  status         UserStatus @default(INVITED)
+  lastLoginAt    DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userRoles    UserRole[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, deletedAt])
+  @@map("users")
+}
+
+model Role {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @db.Uuid
+  name           String
+  slug           String
+  description    String?
+  isSystem       Boolean @default(false)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  permissions  RolePermission[]
+  userRoles    UserRole[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid()) @db.Uuid
+  key         String  @unique // e.g. 'booking.create'
+  name        String
+  description String?
+  module      String // e.g. 'booking', 'finance'
+
+  roles RolePermission[]
+
+  createdAt DateTime @default(now())
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId String @db.Uuid
+  roleId String @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// ==========================================
+// 6. AUDIT MODELS
+// ==========================================
+
+model AuditLog {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String? @db.Uuid // null for platform events
+  userId         String? @db.Uuid
+
+  action     String // e.g., 'CREATE', 'UPDATE', 'DELETE'
+  module     String // e.g., 'tours', 'bookings'
+  entityType String // e.g., 'Booking', 'Tour'
+  entityId   String // UUID of the entity
+
+  oldValues Json? // State before action
+  newValues Json? // State after action
+  metadata  Json? // Additional context (e.g., reason)
+
+  ipAddress String?
+  userAgent String?
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  // We do not strict-relate to User to preserve audit log if user is deleted,
+  // or we can use SetNull. We'll leave it as a string mapping without foreign key
+  // to guarantee audit logs never disappear when a user is hard-deleted.
+  // Actually, SetNull on relation is fine if we make it a relation.
+  // But standard practice for immutable logs is to just store the ID or rely on SetNull.
+  // We'll store userId but no foreign key to avoid cascading complexities, 
+  // or we can use a relation with onDelete: SetNull. Let's use standard string field for safety.
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, createdAt])
+  @@index([action])
+  @@map("audit_logs")
 }
