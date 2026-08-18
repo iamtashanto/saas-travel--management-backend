@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { env } from '../config/env';
 import { prisma } from '../config/database';
 import { redis } from '../config/redis';
 import { asyncHandler } from '../common/utils/asyncHandler';
@@ -30,7 +29,7 @@ router.get(
         service: 'postgresql',
       },
     });
-  })
+  }),
 );
 
 // Redis Health Check
@@ -45,7 +44,7 @@ router.get(
         service: 'redis',
       },
     });
-  })
+  }),
 );
 
 export default router;

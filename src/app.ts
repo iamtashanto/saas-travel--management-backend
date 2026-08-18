@@ -19,7 +19,7 @@ app.use(
   cors({
     origin: env.CORS_ORIGIN,
     credentials: true,
-  })
+  }),
 );
 
 // Rate limiting
@@ -42,7 +42,7 @@ app.use(
     autoLogging: {
       ignore: (req) => req.url === `${env.API_PREFIX}/health`,
     },
-  })
+  }),
 );
 
 // Swagger Docs
