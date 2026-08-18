@@ -12,10 +12,25 @@ const envSchema = z.object({
   API_PREFIX: z.string().default('/api/v1'),
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
+  
+  // JWT
   JWT_ACCESS_SECRET: z.string().min(1),
   JWT_REFRESH_SECRET: z.string().min(1),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
-  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
+  
+  // Auth Policies
+  PASSWORD_RESET_EXPIRES_IN: z.string().default('30m'),
+  EMAIL_VERIFICATION_EXPIRES_IN: z.string().default('24h'),
+  MAX_LOGIN_ATTEMPTS: z.string().transform(Number).default('5'),
+  LOGIN_LOCK_DURATION_MINUTES: z.string().transform(Number).default('15'),
+  REQUIRE_EMAIL_VERIFICATION: z.string().transform(s => s === 'true').default('true'),
+  
+  // Rate Limits
+  AUTH_RATE_LIMIT_WINDOW_MS: z.string().transform(Number).default('900000'), // 15 mins
+  AUTH_RATE_LIMIT_MAX: z.string().transform(Number).default('50'),
+  
+  // General Config
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   LOG_LEVEL: z.string().default('info'),
   APP_URL: z.string().url().default('http://localhost:5000'),

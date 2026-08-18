@@ -47,4 +47,10 @@ router.get(
   }),
 );
 
+import { authRoutes } from '../modules/auth/auth.routes';
+
+// ... existing health routes ...
+
+router.use('/auth', authRoutes);
+
 export default router;
