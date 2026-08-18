@@ -72,6 +72,19 @@ import { tourOperationRoutes } from '../modules/tour-operations/tour-operation.r
 import { resourceAssignmentRoutes } from '../modules/resource-assignments/resource-assignment.routes';
 import { tourIncidentRoutes } from '../modules/tour-incidents/tour-incident.routes';
 import { tourManifestRoutes } from '../modules/tour-manifests/tour-manifest.routes';
+
+// Phase 08 routes
+import { corporateClientRoutes } from '../modules/corporate-clients/corporate-client.routes';
+import { corporateContactRoutes } from '../modules/corporate-clients/corporate-contact.routes';
+import { leadRoutes } from '../modules/sales-crm/lead.routes';
+import { salesActivityRoutes } from '../modules/sales-crm/sales-activity.routes';
+import { customTourRequestRoutes } from '../modules/sales-crm/custom-tour-request.routes';
+import { quotationRoutes } from '../modules/quotations/quotation.routes';
+import { approvalRoutes } from '../modules/quotations/approval.routes';
+import { proposalRoutes } from '../modules/proposals/proposal.routes';
+import { contractRoutes } from '../modules/contracts/contract.routes';
+import { corporateReportRoutes } from '../modules/corporate-reports/corporate-report.routes';
+
 // ... existing health routes ...
 
 router.use('/auth', authRoutes);
@@ -103,5 +116,17 @@ router.use('/tour-operations', tourOperationRoutes);
 router.use('/resource-assignments', resourceAssignmentRoutes);
 router.use('/tour-incidents', tourIncidentRoutes);
 router.use('/tour-manifests', tourManifestRoutes);
+
+// Phase 08
+router.use('/corporate-clients', corporateClientRoutes);
+router.use('/corporate-clients', corporateContactRoutes); // Mounts to /:clientId/contacts
+router.use('/leads', leadRoutes);
+router.use('/sales-activities', salesActivityRoutes);
+router.use('/custom-tour-requests', customTourRequestRoutes);
+router.use('/quotations', quotationRoutes);
+router.use('/approvals', approvalRoutes);
+router.use('/proposals', proposalRoutes);
+router.use('/contracts', contractRoutes);
+router.use('/reports/corporate', corporateReportRoutes);
 
 export default router;
