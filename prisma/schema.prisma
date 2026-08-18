@@ -78,23 +78,38 @@ model Organization {
   roles     Role[]
   auditLogs AuditLog[]
 
-  createdAt              DateTime                 @default(now())
-  updatedAt              DateTime                 @updatedAt
-  deletedAt              DateTime?
-  AuthSession            AuthSession[]
-  OrganizationInvitation OrganizationInvitation[]
-  Destination            Destination[]
-  TourCategory           TourCategory[]
-  PickupPoint            PickupPoint[]
-  TourPackage            TourPackage[]
-  TourSchedule           TourSchedule[]
-  Customer               Customer[]
-  Traveler               Traveler[]
-  Booking                Booking[]
-  SeatReservation        SeatReservation[]
-  BookingStatusHistory   BookingStatusHistory[]
-  BookingNote            BookingNote[]
-  IdempotencyRecord      IdempotencyRecord[]
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  deletedAt               DateTime?
+  AuthSession             AuthSession[]
+  OrganizationInvitation  OrganizationInvitation[]
+  Destination             Destination[]
+  TourCategory            TourCategory[]
+  PickupPoint             PickupPoint[]
+  TourPackage             TourPackage[]
+  TourSchedule            TourSchedule[]
+  Customer                Customer[]
+  Traveler                Traveler[]
+  Booking                 Booking[]
+  SeatReservation         SeatReservation[]
+  BookingStatusHistory    BookingStatusHistory[]
+  BookingNote             BookingNote[]
+  IdempotencyRecord       IdempotencyRecord[]
+  TourOperation           TourOperation[]
+  OperationalChecklist    OperationalChecklist[]
+  ManifestVersion         ManifestVersion[]
+  Vehicle                 Vehicle[]
+  VehicleMaintenance      VehicleMaintenance[]
+  Driver                  Driver[]
+  TourTransportAssignment TourTransportAssignment[]
+  Hotel                   Hotel[]
+  HotelRoomType           HotelRoomType[]
+  TourHotelAssignment     TourHotelAssignment[]
+  RoomAllocation          RoomAllocation[]
+  TourGuide               TourGuide[]
+  TourGuideAssignment     TourGuideAssignment[]
+  TourIncident            TourIncident[]
+  TourOperationNote       TourOperationNote[]
 
   @@index([slug])
   @@index([deletedAt])
@@ -576,8 +591,14 @@ model TourSchedule {
   bookings        Booking[]
   SeatReservation SeatReservation[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  TourOperation           TourOperation?
+  ManifestVersion         ManifestVersion[]
+  TourTransportAssignment TourTransportAssignment[]
+  TourHotelAssignment     TourHotelAssignment[]
+  TourGuideAssignment     TourGuideAssignment[]
+  TourIncident            TourIncident[]
 
   @@index([organizationId, startDate])
   @@index([tourPackageId, startDate])
@@ -959,6 +980,13 @@ model BookingTraveler {
 
   specialRequirement String?
 
+  // Operational Status
+  operationalStatus TravelerOperationalStatus @default(BOOKED)
+  checkedInAt       DateTime?
+  checkedInBy       String?                   @db.Uuid
+  boardedAt         DateTime?
+  boardedBy         String?                   @db.Uuid
+
   createdAt DateTime @default(now())
 
   booking     Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -1086,4 +1114,508 @@ model IdempotencyRecord {
   @@unique([organizationId, key])
   @@index([expiresAt])
   @@map("idempotency_records")
+}
+
+// ==========================================
+// 8. PHASE 07: TOUR OPERATIONS & RESOURCES
+// ==========================================
+
+enum TourOperationStatus {
+  DRAFT
+  PREPARING
+  READY
+  DEPARTED
+  IN_PROGRESS
+  RETURNING
+  COMPLETED
+  CANCELLED
+}
+
+enum TravelerOperationalStatus {
+  BOOKED
+  CONFIRMED
+  CHECKED_IN
+  NO_SHOW
+  BOARDED
+  COMPLETED
+  CANCELLED
+}
+
+enum ChecklistCategory {
+  TRANSPORT
+  TRAVELERS
+  HOTEL
+  GUIDE
+  FINANCE
+  DOCUMENTS
+  SAFETY
+  GENERAL
+}
+
+enum VehicleType {
+  BUS
+  MICROBUS
+  CAR
+  BOAT
+  LAUNCH
+  OTHER
+}
+
+enum ResourceStatus {
+  AVAILABLE
+  ASSIGNED
+  MAINTENANCE
+  ON_LEAVE
+  INACTIVE
+}
+
+enum GuideRole {
+  LEAD_GUIDE
+  ASSISTANT_GUIDE
+  LOCAL_GUIDE
+}
+
+enum IncidentType {
+  MEDICAL
+  TRANSPORT
+  TRAVELER
+  HOTEL
+  WEATHER
+  SAFETY
+  SECURITY
+  FINANCE
+  OTHER
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum NoteVisibility {
+  INTERNAL
+  STAFF
+  MANAGER_ONLY
+}
+
+model TourOperation {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  tourScheduleId String @unique @db.Uuid
+
+  operationCode String              @unique
+  status        TourOperationStatus @default(DRAFT)
+
+  plannedDepartureAt DateTime?
+  actualDepartureAt  DateTime?
+  plannedReturnAt    DateTime?
+  actualReturnAt     DateTime?
+
+  departureLocation String?
+  returnLocation    String?
+
+  totalTravelers Int @default(0)
+
+  notes         String? @db.Text
+  internalNotes String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?  @db.Uuid
+  updatedBy String?  @db.Uuid
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tourSchedule TourSchedule @relation(fields: [tourScheduleId], references: [id], onDelete: Cascade)
+
+  checklists     OperationalChecklist[]
+  incidents      TourIncident[]
+  operationNotes TourOperationNote[]
+
+  @@index([organizationId, status])
+  @@map("tour_operations")
+}
+
+model OperationalChecklist {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @db.Uuid
+  tourOperationId String            @db.Uuid
+  category        ChecklistCategory
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization  Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tourOperation TourOperation              @relation(fields: [tourOperationId], references: [id], onDelete: Cascade)
+  items         OperationalChecklistItem[]
+
+  @@index([tourOperationId])
+  @@map("operational_checklists")
+}
+
+model OperationalChecklistItem {
+  id          String @id @default(uuid()) @db.Uuid
+  checklistId String @db.Uuid
+
+  title       String
+  description String? @db.Text
+
+  isRequired  Boolean @default(true)
+  isCompleted Boolean @default(false)
+
+  completedAt DateTime?
+  completedBy String?   @db.Uuid
+
+  sortOrder Int @default(0)
+
+  checklist OperationalChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId])
+  @@map("operational_checklist_items")
+}
+
+model ManifestVersion {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  tourScheduleId String @db.Uuid
+
+  version Int
+  status  String @default("DRAFT") // DRAFT, FINAL
+
+  generatedAt DateTime @default(now())
+  generatedBy String?  @db.Uuid
+
+  dataSnapshot Json? // Stores the actual manifest data
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tourSchedule TourSchedule @relation(fields: [tourScheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([tourScheduleId, version])
+  @@map("manifest_versions")
+}
+
+model Vehicle {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+
+  name               String
+  registrationNumber String
+  type               VehicleType
+
+  capacity Int
+  status   ResourceStatus @default(AVAILABLE)
+
+  brand           String?
+  model           String?
+  color           String?
+  manufactureYear Int?
+  currentMileage  Int?
+
+  notes    String? @db.Text
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignments  TourTransportAssignment[]
+  maintenance  VehicleMaintenance[]
+
+  @@unique([organizationId, registrationNumber])
+  @@map("vehicles")
+}
+
+model VehicleMaintenance {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  vehicleId      String @db.Uuid
+
+  maintenanceType     String
+  description         String?   @db.Text
+  cost                Decimal   @default(0) @db.Decimal(12, 2)
+  date                DateTime
+  nextMaintenanceDate DateTime?
+  odometer            Int?
+  vendor              String?
+  notes               String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_maintenance")
+}
+
+model Driver {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+
+  name           String
+  phone          String
+  alternatePhone String?
+
+  licenseNumber     String
+  licenseType       String?
+  licenseExpiryDate DateTime
+
+  experienceYears  Int?
+  address          String? @db.Text
+  emergencyContact String?
+
+  status   ResourceStatus @default(AVAILABLE)
+  notes    String?        @db.Text
+  isActive Boolean        @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignments  TourTransportAssignment[]
+
+  @@unique([organizationId, licenseNumber])
+  @@map("drivers")
+}
+
+model TourTransportAssignment {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  tourScheduleId String @db.Uuid
+
+  vehicleId String  @db.Uuid
+  driverId  String? @db.Uuid
+  helperId  String? @db.Uuid
+
+  departureAt DateTime?
+  returnAt    DateTime?
+
+  pickupNotes  String? @db.Text
+  seatCapacity Int
+
+  status String  @default("ASSIGNED")
+  notes  String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tourSchedule TourSchedule @relation(fields: [tourScheduleId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id])
+  driver       Driver?      @relation(fields: [driverId], references: [id])
+
+  @@index([tourScheduleId])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@map("tour_transport_assignments")
+}
+
+model Hotel {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+
+  name    String
+  code    String?
+  address String? @db.Text
+  city    String?
+  country String?
+
+  phone         String?
+  email         String?
+  contactPerson String?
+
+  rating  Int?
+  website String?
+  notes   String? @db.Text
+
+  status   ResourceStatus @default(AVAILABLE)
+  isActive Boolean        @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  roomTypes    HotelRoomType[]
+  assignments  TourHotelAssignment[]
+
+  @@index([organizationId, city])
+  @@map("hotels")
+}
+
+model HotelRoomType {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  hotelId        String @db.Uuid
+
+  name           String // Single, Double, etc.
+  capacity       Int
+  totalRooms     Int    @default(0)
+  availableRooms Int    @default(0)
+
+  basePrice   Decimal @default(0) @db.Decimal(12, 2)
+  description String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  hotel        Hotel            @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  allocations  RoomAllocation[]
+
+  @@map("hotel_room_types")
+}
+
+model TourHotelAssignment {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  tourScheduleId String @db.Uuid
+  hotelId        String @db.Uuid
+
+  checkIn  DateTime?
+  checkOut DateTime?
+  notes    String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tourSchedule TourSchedule     @relation(fields: [tourScheduleId], references: [id], onDelete: Cascade)
+  hotel        Hotel            @relation(fields: [hotelId], references: [id])
+  allocations  RoomAllocation[]
+
+  @@index([tourScheduleId])
+  @@map("tour_hotel_assignments")
+}
+
+model RoomAllocation {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  assignmentId   String @db.Uuid
+  roomTypeId     String @db.Uuid
+
+  roomId         String? // specific physical room identifier, if known
+  capacity       Int
+  allocatedCount Int     @default(0)
+
+  status String @default("ALLOCATED")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignment   TourHotelAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  roomType     HotelRoomType       @relation(fields: [roomTypeId], references: [id])
+
+  @@index([assignmentId])
+  @@map("room_allocations")
+}
+
+model TourGuide {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+
+  name  String
+  phone String
+  email String?
+
+  experienceYears Int?
+  languages       String[] // E.g., ['English', 'Bengali']
+  specialization  String?
+
+  emergencyContact String?
+  photoUrl         String?
+
+  status   ResourceStatus @default(AVAILABLE)
+  notes    String?        @db.Text
+  isActive Boolean        @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignments  TourGuideAssignment[]
+
+  @@map("tour_guides")
+}
+
+model TourGuideAssignment {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  tourScheduleId String @db.Uuid
+  guideId        String @db.Uuid
+
+  role GuideRole @default(LOCAL_GUIDE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tourSchedule TourSchedule @relation(fields: [tourScheduleId], references: [id], onDelete: Cascade)
+  guide        TourGuide    @relation(fields: [guideId], references: [id])
+
+  @@index([tourScheduleId])
+  @@index([guideId])
+  @@map("tour_guide_assignments")
+}
+
+model TourIncident {
+  id              String  @id @default(uuid()) @db.Uuid
+  organizationId  String  @db.Uuid
+  tourScheduleId  String  @db.Uuid
+  tourOperationId String? @db.Uuid
+
+  type     IncidentType
+  severity IncidentSeverity
+  status   IncidentStatus   @default(OPEN)
+
+  title       String
+  description String @db.Text
+
+  reportedAt DateTime @default(now())
+  reportedBy String?  @db.Uuid
+
+  resolvedAt DateTime?
+  resolvedBy String?   @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tourSchedule  TourSchedule   @relation(fields: [tourScheduleId], references: [id], onDelete: Cascade)
+  tourOperation TourOperation? @relation(fields: [tourOperationId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([tourScheduleId])
+  @@index([tourOperationId])
+  @@map("tour_incidents")
+}
+
+model TourOperationNote {
+  id              String @id @default(uuid()) @db.Uuid
+  organizationId  String @db.Uuid
+  tourOperationId String @db.Uuid
+
+  title      String?
+  content    String         @db.Text
+  visibility NoteVisibility @default(INTERNAL)
+
+  authorId String? @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tourOperation TourOperation @relation(fields: [tourOperationId], references: [id], onDelete: Cascade)
+
+  @@index([tourOperationId])
+  @@map("tour_operation_notes")
 }

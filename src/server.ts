@@ -5,6 +5,7 @@ import { prisma } from './config/database';
 import { redis } from './config/redis';
 import { logger } from './common/utils/logger';
 import { BookingExpirationWorker } from './workers/booking-expiration.worker';
+import { OperationsAlertsWorker } from './workers/operations-alerts.worker';
 
 let server: Server;
 
@@ -22,6 +23,7 @@ const startServer = async () => {
 
     // Start background workers
     BookingExpirationWorker.start();
+    OperationsAlertsWorker.start();
   } catch (error) {
     logger.error(error, '❌ Failed to start server');
     process.exit(1);
@@ -37,6 +39,7 @@ const unexpectedErrorHandler = async (error: Error) => {
     server.close(async () => {
       logger.info('Server closed');
       BookingExpirationWorker.stop();
+      OperationsAlertsWorker.stop();
       await prisma.$disconnect();
       redis.disconnect();
       process.exit(1);

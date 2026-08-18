@@ -62,6 +62,16 @@ import { publicBookingRoutes } from '../modules/public/booking/public-booking.ro
 import { customerRoutes } from '../modules/customers/customer.routes';
 import { travelerRoutes } from '../modules/travelers/traveler.routes';
 import { bookingRoutes } from '../modules/bookings/booking.routes';
+
+// Phase 07 routes
+import { vehicleRoutes } from '../modules/vehicles/vehicle.routes';
+import { driverRoutes } from '../modules/drivers/driver.routes';
+import { guideRoutes } from '../modules/guides/guide.routes';
+import { hotelRoutes } from '../modules/hotels/hotel.routes';
+import { tourOperationRoutes } from '../modules/tour-operations/tour-operation.routes';
+import { resourceAssignmentRoutes } from '../modules/resource-assignments/resource-assignment.routes';
+import { tourIncidentRoutes } from '../modules/tour-incidents/tour-incident.routes';
+import { tourManifestRoutes } from '../modules/tour-manifests/tour-manifest.routes';
 // ... existing health routes ...
 
 router.use('/auth', authRoutes);
@@ -83,5 +93,15 @@ router.use('/public/bookings', publicBookingRoutes);
 router.use('/customers', customerRoutes);
 router.use('/travelers', travelerRoutes);
 router.use('/bookings', bookingRoutes);
+
+// Phase 07
+router.use('/vehicles', vehicleRoutes);
+router.use('/drivers', driverRoutes);
+router.use('/guides', guideRoutes);
+router.use('/hotels', hotelRoutes);
+router.use('/tour-operations', tourOperationRoutes);
+router.use('/resource-assignments', resourceAssignmentRoutes);
+router.use('/tour-incidents', tourIncidentRoutes);
+router.use('/tour-manifests', tourManifestRoutes);
 
 export default router;
