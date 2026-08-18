@@ -88,6 +88,13 @@ model Organization {
   PickupPoint            PickupPoint[]
   TourPackage            TourPackage[]
   TourSchedule           TourSchedule[]
+  Customer               Customer[]
+  Traveler               Traveler[]
+  Booking                Booking[]
+  SeatReservation        SeatReservation[]
+  BookingStatusHistory   BookingStatusHistory[]
+  BookingNote            BookingNote[]
+  IdempotencyRecord      IdempotencyRecord[]
 
   @@index([slug])
   @@index([deletedAt])
@@ -466,7 +473,8 @@ model PickupPoint {
   contactPhone      String?
   status            PickupPointStatus @default(ACTIVE)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  BookingTraveler BookingTraveler[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -523,6 +531,8 @@ model TourPackage {
   bookingRules       TourBookingRule?
   cancellationPolicy TourCancellationPolicy?
 
+  bookings Booking[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -562,6 +572,9 @@ model TourSchedule {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   tourPackage  TourPackage  @relation(fields: [tourPackageId], references: [id], onDelete: Cascade)
+
+  bookings        Booking[]
+  SeatReservation SeatReservation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -643,6 +656,8 @@ model TourAddon {
 
   tourPackage TourPackage @relation(fields: [tourPackageId], references: [id], onDelete: Cascade)
 
+  BookingAddon BookingAddon[]
+
   @@index([organizationId])
   @@index([tourPackageId])
   @@map("tour_addons")
@@ -722,4 +737,353 @@ model TourCancellationPolicy {
   tourPackage TourPackage @relation(fields: [tourPackageId], references: [id], onDelete: Cascade)
 
   @@map("tour_cancellation_policies")
+}
+
+// ==========================================
+// 12. PHASE 06: CRM & BOOKING MODELS
+// ==========================================
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum TravelerType {
+  ADULT
+  CHILD
+  INFANT
+}
+
+enum BookingStatus {
+  PENDING
+  HELD
+  AWAITING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+  COMPLETED
+  NO_SHOW
+}
+
+enum BookingSource {
+  WEBSITE
+  ADMIN
+  PHONE
+  WHATSAPP
+  FACEBOOK
+  OFFICE
+  REFERRAL
+  OTHER
+}
+
+enum PriceItemType {
+  ADULT
+  CHILD
+  INFANT
+  ADDON
+  DISCOUNT
+  FEE
+}
+
+enum ReservationStatus {
+  HELD
+  CONFIRMED
+  RELEASED
+  EXPIRED
+}
+
+enum BookingNoteVisibility {
+  INTERNAL
+  CUSTOMER_VISIBLE
+}
+
+model Customer {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+
+  firstName   String
+  lastName    String?
+  displayName String?
+
+  email           String?
+  phone           String?
+  normalizedPhone String?
+  whatsappPhone   String?
+  countryCode     String?
+
+  dateOfBirth DateTime? @db.Date
+  gender      String?
+
+  address  String?
+  city     String?
+  district String?
+  country  String?
+
+  emergencyContactName  String?
+  emergencyContactPhone String?
+
+  notes String?
+
+  status CustomerStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy String? @db.Uuid
+  updatedBy String? @db.Uuid
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  travelers    Traveler[]
+  bookings     Booking[]
+
+  @@index([organizationId, normalizedPhone])
+  @@index([organizationId, email])
+  @@index([organizationId, status])
+  @@map("customers")
+}
+
+model Traveler {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  customerId     String @db.Uuid
+
+  firstName   String
+  lastName    String?
+  displayName String?
+
+  phone String?
+  email String?
+
+  dateOfBirth DateTime? @db.Date
+  gender      String?
+
+  nationality String?
+
+  emergencyContactName  String?
+  emergencyContactPhone String?
+
+  specialRequirements String?
+  notes               String?
+
+  status CustomerStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer         Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  bookingTravelers BookingTraveler[]
+
+  @@index([organizationId, customerId])
+  @@index([organizationId, phone])
+  @@index([organizationId, email])
+  @@map("travelers")
+}
+
+model Booking {
+  id               String @id @default(uuid()) @db.Uuid
+  organizationId   String @db.Uuid
+  bookingReference String
+
+  customerId     String @db.Uuid
+  tourPackageId  String @db.Uuid
+  tourScheduleId String @db.Uuid
+
+  status        BookingStatus @default(PENDING)
+  bookingSource BookingSource @default(WEBSITE)
+  currency      String        @default("BDT") @db.VarChar(3)
+
+  subtotal       Decimal @default(0) @db.Decimal(12, 2)
+  discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  addonAmount    Decimal @default(0) @db.Decimal(12, 2)
+  feeAmount      Decimal @default(0) @db.Decimal(12, 2)
+  totalAmount    Decimal @default(0) @db.Decimal(12, 2)
+  paidAmount     Decimal @default(0) @db.Decimal(12, 2)
+  dueAmount      Decimal @default(0) @db.Decimal(12, 2)
+
+  travelerCount Int
+  adultCount    Int @default(0)
+  childCount    Int @default(0)
+  infantCount   Int @default(0)
+
+  specialRequest String?
+  internalNote   String?
+
+  expiresAt   DateTime?
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?  @db.Uuid
+  updatedBy String?  @db.Uuid
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  tourPackage  TourPackage  @relation(fields: [tourPackageId], references: [id])
+  tourSchedule TourSchedule @relation(fields: [tourScheduleId], references: [id])
+
+  bookingTravelers BookingTraveler[]
+  bookingAddons    BookingAddon[]
+  priceItems       BookingPriceItem[]
+  seatReservations SeatReservation[]
+  statusHistory    BookingStatusHistory[]
+  notes            BookingNote[]
+
+  @@unique([organizationId, bookingReference])
+  @@index([organizationId, customerId])
+  @@index([organizationId, tourScheduleId])
+  @@index([organizationId, status])
+  @@index([expiresAt])
+  @@map("bookings")
+}
+
+model BookingTraveler {
+  id         String @id @default(uuid()) @db.Uuid
+  bookingId  String @db.Uuid
+  travelerId String @db.Uuid
+
+  travelerType TravelerType
+
+  // Snapshots
+  firstName String
+  lastName  String?
+  phone     String?
+  email     String?
+
+  unitPrice Decimal @default(0) @db.Decimal(12, 2)
+
+  pickupPointId String? @db.Uuid
+
+  specialRequirement String?
+
+  createdAt DateTime @default(now())
+
+  booking     Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  traveler    Traveler     @relation(fields: [travelerId], references: [id])
+  pickupPoint PickupPoint? @relation(fields: [pickupPointId], references: [id])
+
+  @@index([bookingId])
+  @@map("booking_travelers")
+}
+
+model BookingPriceItem {
+  id        String @id @default(uuid()) @db.Uuid
+  bookingId String @db.Uuid
+
+  type        PriceItemType
+  description String
+  quantity    Int
+  unitPrice   Decimal       @db.Decimal(12, 2)
+  totalPrice  Decimal       @db.Decimal(12, 2)
+  currency    String        @default("BDT") @db.VarChar(3)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@map("booking_price_items")
+}
+
+model BookingAddon {
+  id          String @id @default(uuid()) @db.Uuid
+  bookingId   String @db.Uuid
+  tourAddonId String @db.Uuid
+
+  nameSnapshot String
+  quantity     Int
+  unitPrice    Decimal @db.Decimal(12, 2)
+  totalPrice   Decimal @db.Decimal(12, 2)
+  currency     String  @default("BDT") @db.VarChar(3)
+
+  booking Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  addon   TourAddon @relation(fields: [tourAddonId], references: [id])
+
+  @@index([bookingId])
+  @@map("booking_addons")
+}
+
+model SeatReservation {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  bookingId      String @db.Uuid
+  tourScheduleId String @db.Uuid
+
+  quantity Int
+  status   ReservationStatus
+
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  tourSchedule TourSchedule @relation(fields: [tourScheduleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, tourScheduleId, status])
+  @@index([expiresAt])
+  @@map("seat_reservations")
+}
+
+model BookingStatusHistory {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  bookingId      String @db.Uuid
+
+  fromStatus BookingStatus?
+  toStatus   BookingStatus
+  reason     String?
+  metadata   Json?
+
+  changedBy String? @db.Uuid
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId, createdAt])
+  @@map("booking_status_history")
+}
+
+model BookingNote {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  bookingId      String @db.Uuid
+
+  content    String
+  visibility BookingNoteVisibility @default(INTERNAL)
+
+  authorId String? @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@map("booking_notes")
+}
+
+model IdempotencyRecord {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+
+  key         String
+  requestHash String?
+  status      String
+  response    Json?
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key])
+  @@index([expiresAt])
+  @@map("idempotency_records")
 }

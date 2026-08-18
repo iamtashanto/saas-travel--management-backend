@@ -58,7 +58,10 @@ import { tourCategoryRoutes } from '../modules/tour-categories/category.routes';
 import { pickupPointRoutes } from '../modules/pickup-points/pickup-point.routes';
 import { tourRoutes } from '../modules/tours/tour.routes';
 import { publicRoutes } from '../modules/public/tour/public-tour.routes';
-
+import { publicBookingRoutes } from '../modules/public/booking/public-booking.routes';
+import { customerRoutes } from '../modules/customers/customer.routes';
+import { travelerRoutes } from '../modules/travelers/traveler.routes';
+import { bookingRoutes } from '../modules/bookings/booking.routes';
 // ... existing health routes ...
 
 router.use('/auth', authRoutes);
@@ -74,5 +77,11 @@ router.use('/tour-categories', tourCategoryRoutes);
 router.use('/pickup-points', pickupPointRoutes);
 router.use('/tours', tourRoutes);
 router.use('/public', publicRoutes);
+router.use('/public/bookings', publicBookingRoutes);
+
+// Phase 06 routes
+router.use('/customers', customerRoutes);
+router.use('/travelers', travelerRoutes);
+router.use('/bookings', bookingRoutes);
 
 export default router;

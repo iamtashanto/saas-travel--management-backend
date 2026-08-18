@@ -4,6 +4,7 @@ import { env } from './config/env';
 import { prisma } from './config/database';
 import { redis } from './config/redis';
 import { logger } from './common/utils/logger';
+import { BookingExpirationWorker } from './workers/booking-expiration.worker';
 
 let server: Server;
 
@@ -18,6 +19,9 @@ const startServer = async () => {
       logger.info(`🚀 Server running in ${env.NODE_ENV} mode on port ${env.PORT}`);
       logger.info(`📚 Swagger docs available at ${env.APP_URL}/api/docs`);
     });
+
+    // Start background workers
+    BookingExpirationWorker.start();
   } catch (error) {
     logger.error(error, '❌ Failed to start server');
     process.exit(1);
@@ -32,6 +36,7 @@ const unexpectedErrorHandler = async (error: Error) => {
   if (server) {
     server.close(async () => {
       logger.info('Server closed');
+      BookingExpirationWorker.stop();
       await prisma.$disconnect();
       redis.disconnect();
       process.exit(1);
