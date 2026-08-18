@@ -85,6 +85,11 @@ import { proposalRoutes } from '../modules/proposals/proposal.routes';
 import { contractRoutes } from '../modules/contracts/contract.routes';
 import { corporateReportRoutes } from '../modules/corporate-reports/corporate-report.routes';
 
+// Phase 11 routes
+import { operationsRoutes } from '../modules/tour-operations/operations.routes';
+import { procurementRoutes } from '../modules/procurement/procurement.routes';
+import { inventoryRoutes } from '../modules/inventory/inventory.routes';
+
 // ... existing health routes ...
 
 router.use('/auth', authRoutes);
@@ -128,5 +133,10 @@ router.use('/approvals', approvalRoutes);
 router.use('/proposals', proposalRoutes);
 router.use('/contracts', contractRoutes);
 router.use('/reports/corporate', corporateReportRoutes);
+
+// Phase 11
+router.use('/operations', operationsRoutes);
+router.use('/procurement', procurementRoutes);
+router.use('/inventory', inventoryRoutes);
 
 export default router;

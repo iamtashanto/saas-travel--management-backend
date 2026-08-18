@@ -1,83 +1,83 @@
 import { Request, Response, NextFunction } from 'express';
-import { prisma } from '../../lib/prisma';
 import { sendResponse } from '../../utils/response';
-import { AppError } from '../../utils/app-error';
-import { z } from 'zod';
-
-export const vehicleSchema = z.object({
-  name: z.string().min(1),
-  registrationNumber: z.string().min(1),
-  type: z.enum(['BUS', 'MICROBUS', 'CAR', 'BOAT', 'LAUNCH', 'OTHER']),
-  capacity: z.number().int().positive(),
-  status: z.enum(['AVAILABLE', 'ASSIGNED', 'MAINTENANCE', 'ON_LEAVE', 'INACTIVE']).optional(),
-  brand: z.string().optional(),
-  model: z.string().optional(),
-  color: z.string().optional(),
-  manufactureYear: z.number().int().optional(),
-  currentMileage: z.number().int().optional(),
-  notes: z.string().optional(),
-});
+import { VehicleService } from './vehicle.service';
 
 export class VehicleController {
   static async list(req: Request, res: Response, next: NextFunction) {
     try {
       const { page = '1', limit = '10', search, status } = req.query;
-      const skip = (Number(page) - 1) * Number(limit);
-      
-      const where: any = { organizationId: req.tenant!.organizationId, isActive: true };
-      if (status) where.status = status;
-      if (search) where.registrationNumber = { contains: search as string, mode: 'insensitive' };
+      const result = await VehicleService.listVehicles(
+        req.tenant!.organizationId,
+        Number(page),
+        Number(limit),
+        search as string,
+        status as string
+      );
+      sendResponse(res, 200, true, 'Vehicles retrieved', result.data, { page: result.page, limit: result.limit, total: result.total });
+    } catch (error) { next(error); }
+  }
 
-      const [data, total] = await Promise.all([
-        prisma.vehicle.findMany({ where, skip, take: Number(limit), orderBy: { createdAt: 'desc' } }),
-        prisma.vehicle.count({ where }),
-      ]);
-
-      sendResponse(res, 200, true, 'Vehicles retrieved', data, { page: Number(page), limit: Number(limit), total });
+  static async get(req: Request, res: Response, next: NextFunction) {
+    try {
+      const vehicle = await VehicleService.getVehicle(req.params.id, req.tenant!.organizationId);
+      sendResponse(res, 200, true, 'Vehicle retrieved', vehicle);
     } catch (error) { next(error); }
   }
 
   static async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const data = req.body;
-      const organizationId = req.tenant!.organizationId;
-
-      const existing = await prisma.vehicle.findFirst({
-        where: { organizationId, registrationNumber: data.registrationNumber },
-      });
-      if (existing) throw new AppError(400, 'DUPLICATE_VEHICLE', 'Registration number already exists');
-
-      const vehicle = await prisma.vehicle.create({
-        data: { ...data, organizationId },
-      });
-
+      const vehicle = await VehicleService.createVehicle(req.tenant!.organizationId, req.body);
       sendResponse(res, 201, true, 'Vehicle created', vehicle);
     } catch (error) { next(error); }
   }
 
   static async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const organizationId = req.tenant!.organizationId;
-      const vehicle = await prisma.vehicle.findFirst({ where: { id: req.params.id, organizationId } });
-      if (!vehicle) throw new AppError(404, 'NOT_FOUND', 'Vehicle not found');
-
-      const updated = await prisma.vehicle.update({
-        where: { id: req.params.id },
-        data: req.body,
-      });
-
+      const updated = await VehicleService.updateVehicle(req.params.id, req.tenant!.organizationId, req.body);
       sendResponse(res, 200, true, 'Vehicle updated', updated);
     } catch (error) { next(error); }
   }
 
   static async delete(req: Request, res: Response, next: NextFunction) {
     try {
-      const organizationId = req.tenant!.organizationId;
-      await prisma.vehicle.updateMany({
-        where: { id: req.params.id, organizationId },
-        data: { isActive: false, status: 'INACTIVE' },
-      });
+      await VehicleService.deleteVehicle(req.params.id, req.tenant!.organizationId);
       sendResponse(res, 200, true, 'Vehicle archived');
+    } catch (error) { next(error); }
+  }
+
+  // Extensions
+  static async addDocument(req: Request, res: Response, next: NextFunction) {
+    try {
+      const doc = await VehicleService.addDocument(req.params.id, req.tenant!.organizationId, req.body);
+      sendResponse(res, 201, true, 'Document added', doc);
+    } catch (error) { next(error); }
+  }
+
+  static async addTripLog(req: Request, res: Response, next: NextFunction) {
+    try {
+      const log = await VehicleService.addTripLog(req.params.id, req.tenant!.organizationId, req.body);
+      sendResponse(res, 201, true, 'Trip log added', log);
+    } catch (error) { next(error); }
+  }
+
+  static async addFuelRecord(req: Request, res: Response, next: NextFunction) {
+    try {
+      const record = await VehicleService.addFuelRecord(req.params.id, req.tenant!.organizationId, req.body);
+      sendResponse(res, 201, true, 'Fuel record added', record);
+    } catch (error) { next(error); }
+  }
+
+  static async addMaintenance(req: Request, res: Response, next: NextFunction) {
+    try {
+      const record = await VehicleService.addMaintenance(req.params.id, req.tenant!.organizationId, req.body);
+      sendResponse(res, 201, true, 'Maintenance record added', record);
+    } catch (error) { next(error); }
+  }
+
+  static async addRental(req: Request, res: Response, next: NextFunction) {
+    try {
+      const record = await VehicleService.addRental(req.params.id, req.tenant!.organizationId, req.body);
+      sendResponse(res, 201, true, 'Rental record added', record);
     } catch (error) { next(error); }
   }
 }

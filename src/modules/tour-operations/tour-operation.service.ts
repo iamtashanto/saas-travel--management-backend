@@ -129,13 +129,21 @@ export class TourOperationService {
     
     const transportCapacity = transports.reduce((acc, t) => acc + t.seatCapacity, 0);
     
+    let totalChecks = 2; // Transport + Checklists
+    let passedChecks = 0;
+
     if (transportCapacity < confirmedTravelers) {
       ready = false;
       checks.push({ key: 'transport_capacity', status: 'INSUFFICIENT', details: `Capacity: ${transportCapacity}, Travelers: ${confirmedTravelers}` });
     } else {
       checks.push({ key: 'transport_capacity', status: 'READY' });
+      passedChecks++;
     }
 
-    return { ready, checks };
+    if (incompleteItems.length === 0) passedChecks++;
+
+    const percentage = Math.round((passedChecks / totalChecks) * 100);
+
+    return { ready, percentage, checks };
   }
 }
